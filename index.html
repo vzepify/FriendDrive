@@ -1,63 +1,310 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FriendDrive</title>
-<link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-<div id="app">
-  <aside class="sidebar">
-    <div class="brand"><span class="brand-mark">F</span><span>FriendDrive</span></div>
-    <button id="newBtn" class="new-btn">＋ New</button>
-    <nav>
-      <button class="nav active" data-view="drive">⌂ <span>My Drive</span></button>
-      <button class="nav" data-view="shared">♧ <span>Shared with me</span></button>
-      <button class="nav" data-view="recent">◷ <span>Recent</span></button>
-      <button class="nav" data-view="starred">☆ <span>Starred</span></button>
-      <button class="nav" data-view="trash">♜ <span>Trash</span></button>
-    </nav>
-    <div class="storage">
-      <div class="storage-title">Storage</div>
-      <div class="bar"><i id="storageBar"></i></div>
-      <div id="storageText">0 B used</div>
-    </div>
-    <div class="sidebar-foot">Free friends-only cloud drive<br><small>Frontend hosted on GitHub Pages</small></div>
-  </aside>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <main>
-    <header>
-      <div class="search"><span>⌕</span><input id="search" placeholder="Search in FriendDrive"></div>
-      <button id="themeBtn" class="icon-btn" title="Theme">☼</button>
-      <button id="helpBtn" class="icon-btn" title="Help">?</button>
-      <div class="avatar">K</div>
-    </header>
-    <section class="toolbar">
-      <div>
-        <button id="backBtn" class="icon-btn">←</button>
-        <button id="forwardBtn" class="icon-btn">→</button>
-      </div>
-      <div class="toolbar-right">
-        <button id="viewBtn" class="icon-btn">▦</button>
-        <button id="sortBtn" class="sort">Name ▾</button>
-      </div>
-    </section>
-    <section class="content">
-      <div class="crumbs" id="crumbs"></div>
-      <div class="heading-row"><div><h1 id="title">My Drive</h1><p id="subtitle">Your files and folders</p></div><button id="uploadBtn" class="primary">↑ Upload</button></div>
-      <div id="dropzone" class="dropzone">Drop files anywhere here to upload</div>
-      <input id="fileInput" type="file" multiple hidden>
-      <div id="empty" class="empty hidden"><div>☁</div><h2>No files here</h2><p>Upload something or create a folder to get started.</p></div>
-      <div id="files" class="file-grid"></div>
-    </section>
-  </main>
+    <title>FriendDrive</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+</head>
+
+<body>
+
+<div id="authScreen" class="auth-screen">
+
+    <div class="auth-card">
+
+        <div class="auth-logo">
+            <span class="brand-mark">F</span>
+        </div>
+
+        <h1>FriendDrive</h1>
+
+        <p class="auth-subtitle">
+            Your private cloud for you and your friends.
+        </p>
+
+        <div id="authError" class="auth-error hidden"></div>
+
+        <input
+            id="email"
+            type="email"
+            placeholder="Email"
+            autocomplete="email"
+        >
+
+        <input
+            id="password"
+            type="password"
+            placeholder="Password"
+            autocomplete="current-password"
+        >
+
+        <button id="loginBtn" class="primary auth-button">
+            Log in
+        </button>
+
+        <button id="signupBtn" class="auth-link">
+            Create an account
+        </button>
+
+    </div>
+
 </div>
 
-<div id="modal" class="modal hidden"><div class="modal-card"><button class="close" id="closeModal">×</button><div id="modalBody"></div></div></div>
+
+<div id="driveApp" class="hidden">
+
+    <aside class="sidebar">
+
+        <div class="brand">
+            <span class="brand-mark">F</span>
+            <span>FriendDrive</span>
+        </div>
+
+        <button id="newBtn" class="new-btn">
+            ＋ New
+        </button>
+
+        <nav>
+
+            <button class="nav active" data-view="drive">
+                ⌂
+                <span>My Drive</span>
+            </button>
+
+            <button class="nav" data-view="shared">
+                ♧
+                <span>Shared with me</span>
+            </button>
+
+            <button class="nav" data-view="recent">
+                ◷
+                <span>Recent</span>
+            </button>
+
+            <button class="nav" data-view="starred">
+                ☆
+                <span>Starred</span>
+            </button>
+
+            <button class="nav" data-view="trash">
+                ♜
+                <span>Trash</span>
+            </button>
+
+        </nav>
+
+        <div class="storage">
+
+            <div class="storage-title">
+                Storage
+            </div>
+
+            <div class="bar">
+                <i id="storageBar"></i>
+            </div>
+
+            <div id="storageText">
+                0 B used
+            </div>
+
+        </div>
+
+        <button id="logoutBtn" class="logout">
+            Log out
+        </button>
+
+    </aside>
+
+
+    <main>
+
+        <header>
+
+            <div class="search">
+                <span>⌕</span>
+
+                <input
+                    id="search"
+                    placeholder="Search in FriendDrive"
+                >
+            </div>
+
+            <button
+                id="themeBtn"
+                class="icon-btn"
+            >
+                ☼
+            </button>
+
+            <button
+                id="helpBtn"
+                class="icon-btn"
+            >
+                ?
+            </button>
+
+            <div
+                id="avatar"
+                class="avatar"
+            >
+                F
+            </div>
+
+        </header>
+
+
+        <section class="toolbar">
+
+            <div>
+
+                <button
+                    id="backBtn"
+                    class="icon-btn"
+                >
+                    ←
+                </button>
+
+                <button
+                    id="forwardBtn"
+                    class="icon-btn"
+                >
+                    →
+                </button>
+
+            </div>
+
+            <div class="toolbar-right">
+
+                <button
+                    id="viewBtn"
+                    class="icon-btn"
+                >
+                    ▦
+                </button>
+
+                <button
+                    id="sortBtn"
+                    class="sort"
+                >
+                    Name ▾
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <section class="content">
+
+            <div
+                class="crumbs"
+                id="crumbs"
+            >
+                My Drive
+            </div>
+
+
+            <div class="heading-row">
+
+                <div>
+
+                    <h1 id="title">
+                        My Drive
+                    </h1>
+
+                    <p id="subtitle">
+                        Your files and folders
+                    </p>
+
+                </div>
+
+                <button
+                    id="uploadBtn"
+                    class="primary"
+                >
+                    ↑ Upload
+                </button>
+
+            </div>
+
+
+            <div
+                id="dropzone"
+                class="dropzone"
+            >
+                Drop files anywhere here to upload
+            </div>
+
+
+            <input
+                id="fileInput"
+                type="file"
+                multiple
+                hidden
+            >
+
+
+            <div
+                id="empty"
+                class="empty hidden"
+            >
+
+                <div>☁</div>
+
+                <h2>
+                    No files here
+                </h2>
+
+                <p>
+                    Upload something or create a folder to get started.
+                </p>
+
+            </div>
+
+
+            <div
+                id="files"
+                class="file-grid"
+            ></div>
+
+        </section>
+
+    </main>
+
+</div>
+
+
+<div
+    id="modal"
+    class="modal hidden"
+>
+
+    <div class="modal-card">
+
+        <button
+            class="close"
+            id="closeModal"
+        >
+            ×
+        </button>
+
+        <div id="modalBody"></div>
+
+    </div>
+
+</div>
+
+
 <div id="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/supabase.js"></script>
+
+
 <script src="js/app.js"></script>
+
 </body>
 </html>
