@@ -6,9 +6,9 @@ console.log("FriendDrive starting...");
 console.log("Supabase:", supabaseClient);
 
 
-/* =========================
+/* =========================================================
    AUTH
-========================= */
+========================================================= */
 
 const authScreen = document.getElementById("authScreen");
 const driveApp = document.getElementById("driveApp");
@@ -25,88 +25,66 @@ const logoutBtn = document.getElementById("logoutBtn");
 
 
 function showAuthError(message) {
-
     authError.textContent = message;
-
     authError.classList.remove("hidden");
-
 }
 
 
 function clearAuthError() {
-
     authError.textContent = "";
-
     authError.classList.add("hidden");
-
 }
 
 
 function showDrive() {
-
     authScreen.classList.add("hidden");
-
     driveApp.classList.remove("hidden");
 
     loadFiles();
-
 }
 
 
 function showLogin() {
-
     driveApp.classList.add("hidden");
-
     authScreen.classList.remove("hidden");
-
 }
 
+
+/* =========================================================
+   LOGIN
+========================================================= */
 
 loginBtn.addEventListener("click", async () => {
 
     clearAuthError();
 
     const email = emailInput.value.trim();
-
     const password = passwordInput.value;
 
     if (!email || !password) {
-
         showAuthError(
             "Enter your email and password."
         );
 
         return;
-
     }
 
     loginBtn.disabled = true;
-
     loginBtn.textContent = "Logging in...";
-
 
     const {
         error
     } = await supabaseClient.auth.signInWithPassword({
-
         email,
-
         password
-
     });
 
-
     loginBtn.disabled = false;
-
     loginBtn.textContent = "Log in";
 
-
     if (error) {
-
         showAuthError(error.message);
-
         return;
-
     }
 
     showDrive();
@@ -114,14 +92,16 @@ loginBtn.addEventListener("click", async () => {
 });
 
 
+/* =========================================================
+   SIGN UP
+========================================================= */
+
 signupBtn.addEventListener("click", async () => {
 
     clearAuthError();
 
     const email = emailInput.value.trim();
-
     const password = passwordInput.value;
-
 
     if (!email || !password) {
 
@@ -130,9 +110,7 @@ signupBtn.addEventListener("click", async () => {
         );
 
         return;
-
     }
-
 
     if (password.length < 6) {
 
@@ -141,40 +119,26 @@ signupBtn.addEventListener("click", async () => {
         );
 
         return;
-
     }
 
-
     signupBtn.disabled = true;
-
     signupBtn.textContent = "Creating account...";
-
 
     const {
         data,
         error
     } = await supabaseClient.auth.signUp({
-
         email,
-
         password
-
     });
 
-
     signupBtn.disabled = false;
-
     signupBtn.textContent = "Create an account";
 
-
     if (error) {
-
         showAuthError(error.message);
-
         return;
-
     }
-
 
     if (data.session) {
 
@@ -191,6 +155,10 @@ signupBtn.addEventListener("click", async () => {
 });
 
 
+/* =========================================================
+   LOGOUT
+========================================================= */
+
 logoutBtn.addEventListener("click", async () => {
 
     await supabaseClient.auth.signOut();
@@ -200,9 +168,9 @@ logoutBtn.addEventListener("click", async () => {
 });
 
 
-/* =========================
+/* =========================================================
    AUTH STATE
-========================= */
+========================================================= */
 
 async function checkLogin() {
 
@@ -212,15 +180,10 @@ async function checkLogin() {
         }
     } = await supabaseClient.auth.getSession();
 
-
     if (session) {
-
         showDrive();
-
     } else {
-
         showLogin();
-
     }
 
 }
@@ -230,22 +193,25 @@ supabaseClient.auth.onAuthStateChange(
     (event, session) => {
 
         if (session) {
-
             showDrive();
-
         } else {
-
             showLogin();
-
         }
 
     }
 );
 
 
-/* =========================
-   FILES
-========================= */
+/* =========================================================
+   FILE STATE
+========================================================= */
+
+let currentFiles = new Map();
+
+
+/* =========================================================
+   FILE LOADING
+========================================================= */
 
 async function loadFiles() {
 
@@ -258,7 +224,6 @@ async function loadFiles() {
         .eq("trashed", false)
         .order("name");
 
-
     if (error) {
 
         console.error(
@@ -267,20 +232,82 @@ async function loadFiles() {
         );
 
         return;
-
     }
-
 
     console.log(
         "Files from Supabase:",
         data
     );
 
-
     renderFiles(data);
 
 }
 
+
+/* =========================================================
+   FILE TYPE HELPERS
+========================================================= */
+
+function isVideo(file) {
+
+    if (!file) {
+        return false;
+    }
+
+    if (
+        file.mime_type &&
+        file.mime_type.toLowerCase().startsWith("video/")
+    ) {
+        return true;
+    }
+
+    const name =
+        String(file.name || "").toLowerCase();
+
+    return (
+        name.endsWith(".mp4") ||
+        name.endsWith(".webm") ||
+        name.endsWith(".ogg") ||
+        name.endsWith(".ogv") ||
+        name.endsWith(".mov") ||
+        name.endsWith(".m4v") ||
+        name.endsWith(".avi") ||
+        name.endsWith(".mkv")
+    );
+
+}
+
+
+function getFileIcon(file) {
+
+    if (file.type === "folder") {
+        return "📁";
+    }
+
+    if (isVideo(file)) {
+        return "🎬";
+    }
+
+    if (
+        file.mime_type &&
+        file.mime_type.startsWith("image/")
+    ) {
+        return "🖼️";
+    }
+
+    if (
+        file.mime_type === "application/pdf"
+    ) {
+        return "📕";
+    }
+
+    return "📄";
+}
+
+
+/* =========================================================
+   RENDER FILES
+========================================================= */
 
 function renderFiles(files) {
 
@@ -290,50 +317,108 @@ function renderFiles(files) {
     const empty =
         document.getElementById("empty");
 
-
     container.innerHTML = "";
 
+    currentFiles.clear();
 
     if (!files.length) {
 
         empty.classList.remove("hidden");
 
         return;
-
     }
-
 
     empty.classList.add("hidden");
 
-
     for (const file of files) {
+
+        currentFiles.set(
+            String(file.id),
+            file
+        );
 
         const element =
             document.createElement("article");
 
-
         element.className =
-            "file " + file.type;
+            "file " + (file.type || "file");
 
+        element.dataset.fileId =
+            String(file.id);
+
+        const video =
+            isVideo(file);
 
         element.innerHTML = `
 
-            <div class="file-icon">
-                ${file.type === "folder" ? "📁" : "📄"}
+            <div
+                class="file-icon"
+                data-action="preview"
+                title="${video ? "Play video" : ""}"
+            >
+                ${getFileIcon(file)}
             </div>
 
-            <div class="file-name">
+            <div
+                class="file-name"
+                title="${escapeHtml(file.name)}"
+            >
                 ${escapeHtml(file.name)}
             </div>
 
             <div class="file-meta">
-                ${file.type === "folder"
-                    ? "Folder"
-                    : formatSize(file.size)}
+
+                ${
+                    file.type === "folder"
+                        ? "Folder"
+                        : formatSize(file.size)
+                }
+
+            </div>
+
+            <button
+                class="file-menu"
+                data-action="menu"
+                type="button"
+                aria-label="File options"
+            >
+                ⋮
+            </button>
+
+            <div
+                class="file-menu-dropdown hidden"
+                data-menu
+            >
+
+                ${
+                    video
+                        ? `
+                            <button
+                                type="button"
+                                data-action="preview"
+                            >
+                                ▶ Preview
+                            </button>
+                        `
+                        : ""
+                }
+
+                ${
+                    file.type !== "folder"
+                        ? `
+                            <button
+                                type="button"
+                                data-action="download"
+                            >
+                                ↓ Download
+                            </button>
+                        `
+                        : ""
+                }
+
             </div>
 
         `;
-
 
         container.appendChild(element);
 
@@ -342,49 +427,479 @@ function renderFiles(files) {
 }
 
 
-function escapeHtml(value) {
+/* =========================================================
+   FILE CARD EVENTS
+========================================================= */
 
-    return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+document
+    .getElementById("files")
+    .addEventListener("click", async event => {
+
+        const fileCard =
+            event.target.closest(".file");
+
+        if (!fileCard) {
+            return;
+        }
+
+        const fileId =
+            fileCard.dataset.fileId;
+
+        const file =
+            currentFiles.get(fileId);
+
+        if (!file) {
+            return;
+        }
+
+
+        /* -----------------------------------------
+           THREE DOT MENU
+        ----------------------------------------- */
+
+        const menuButton =
+            event.target.closest(
+                '[data-action="menu"]'
+            );
+
+        if (menuButton) {
+
+            event.stopPropagation();
+
+            closeAllFileMenus();
+
+            const menu =
+                fileCard.querySelector(
+                    "[data-menu]"
+                );
+
+            menu.classList.toggle("hidden");
+
+            return;
+        }
+
+
+        /* -----------------------------------------
+           PREVIEW
+        ----------------------------------------- */
+
+        const previewButton =
+            event.target.closest(
+                '[data-action="preview"]'
+            );
+
+        if (previewButton) {
+
+            closeAllFileMenus();
+
+            if (isVideo(file)) {
+
+                await previewVideo(file);
+
+            }
+
+            return;
+        }
+
+
+        /* -----------------------------------------
+           DOWNLOAD
+        ----------------------------------------- */
+
+        const downloadButton =
+            event.target.closest(
+                '[data-action="download"]'
+            );
+
+        if (downloadButton) {
+
+            closeAllFileMenus();
+
+            await downloadFile(file);
+
+            return;
+        }
+
+    });
+
+
+/* =========================================================
+   CLOSE FILE MENUS
+========================================================= */
+
+function closeAllFileMenus() {
+
+    document
+        .querySelectorAll("[data-menu]")
+        .forEach(menu => {
+
+            menu.classList.add("hidden");
+
+        });
 
 }
 
 
-function formatSize(bytes) {
+document.addEventListener(
+    "click",
+    event => {
 
-    if (!bytes) return "0 B";
+        if (
+            !event.target.closest(".file-menu") &&
+            !event.target.closest("[data-menu]")
+        ) {
 
-    const units = [
-        "B",
-        "KB",
-        "MB",
-        "GB",
-        "TB"
-    ];
+            closeAllFileMenus();
 
-    const index =
-        Math.floor(
-            Math.log(bytes) /
-            Math.log(1024)
+        }
+
+    }
+);
+
+
+/* =========================================================
+   SUPABASE SIGNED URL
+========================================================= */
+
+async function getFileUrl(file) {
+
+    if (!file || !file.storage_path) {
+
+        throw new Error(
+            "This file does not have a storage path."
         );
 
-    return (
-        bytes /
-        Math.pow(1024, index)
-    ).toFixed(index ? 1 : 0)
-    + " "
-    + units[index];
+    }
+
+    const {
+        data,
+        error
+    } = await supabaseClient.storage
+        .from("files")
+        .createSignedUrl(
+            file.storage_path,
+            3600
+        );
+
+    if (error) {
+
+        console.error(
+            "Could not create signed URL:",
+            error
+        );
+
+        throw error;
+    }
+
+    if (!data || !data.signedUrl) {
+
+        throw new Error(
+            "Supabase did not return a file URL."
+        );
+
+    }
+
+    return data.signedUrl;
 
 }
 
 
-/* =========================
+/* =========================================================
+   VIDEO PREVIEW
+========================================================= */
+
+async function previewVideo(file) {
+
+    const modal =
+        document.getElementById("modal");
+
+    const modalBody =
+        document.getElementById("modalBody");
+
+    modalBody.innerHTML = `
+
+        <div class="video-preview">
+
+            <div class="video-preview-header">
+
+                <div class="video-preview-title">
+                    ${escapeHtml(file.name)}
+                </div>
+
+            </div>
+
+            <div class="video-preview-loading">
+                Loading video...
+            </div>
+
+        </div>
+
+    `;
+
+    modal.classList.remove("hidden");
+
+    try {
+
+        const url =
+            await getFileUrl(file);
+
+        modalBody.innerHTML = `
+
+            <div class="video-preview">
+
+                <div class="video-preview-header">
+
+                    <div
+                        class="video-preview-title"
+                        title="${escapeHtml(file.name)}"
+                    >
+                        ${escapeHtml(file.name)}
+                    </div>
+
+                    <button
+                        class="video-download-preview"
+                        type="button"
+                        data-preview-download
+                    >
+                        ↓ Download
+                    </button>
+
+                </div>
+
+                <video
+                    class="video-player"
+                    controls
+                    autoplay
+                    playsinline
+                    preload="metadata"
+                >
+                    <source
+                        src="${escapeHtml(url)}"
+                        type="${escapeHtml(
+                            file.mime_type || "video/mp4"
+                        )}"
+                    >
+
+                    Your browser does not support
+                    HTML5 video playback.
+
+                </video>
+
+                <div class="video-preview-info">
+
+                    ${escapeHtml(file.name)}
+
+                    <span>
+                        ${formatSize(file.size)}
+                    </span>
+
+                </div>
+
+            </div>
+
+        `;
+
+        const video =
+            modalBody.querySelector(
+                ".video-player"
+            );
+
+        video.addEventListener(
+            "error",
+            () => {
+
+                const errorBox =
+                    document.createElement("div");
+
+                errorBox.className =
+                    "video-preview-error";
+
+                errorBox.textContent =
+                    "This video could not be played by your browser.";
+
+                modalBody
+                    .querySelector(".video-preview")
+                    .appendChild(errorBox);
+
+            }
+        );
+
+
+        const downloadButton =
+            modalBody.querySelector(
+                "[data-preview-download]"
+            );
+
+        downloadButton.addEventListener(
+            "click",
+            () => downloadFile(file)
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Video preview failed:",
+            error
+        );
+
+        modalBody.innerHTML = `
+
+            <div class="preview-error">
+
+                <h2>Couldn't open video</h2>
+
+                <p>
+                    ${escapeHtml(
+                        error.message ||
+                        "Something went wrong."
+                    )}
+                </p>
+
+            </div>
+
+        `;
+
+    }
+
+}
+
+
+/* =========================================================
+   DOWNLOAD FILE
+========================================================= */
+
+async function downloadFile(file) {
+
+    try {
+
+        const url =
+            await getFileUrl(file);
+
+        /*
+         * Supabase signed URLs can be downloaded directly.
+         * Using a temporary anchor keeps large videos
+         * from being loaded entirely into browser memory.
+         */
+
+        const link =
+            document.createElement("a");
+
+        link.href = url;
+
+        link.download =
+            file.name || "download";
+
+        link.target = "_blank";
+
+        link.rel = "noopener";
+
+        document.body.appendChild(link);
+
+        link.click();
+
+        link.remove();
+
+        showToast(
+            "Download started"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Download failed:",
+            error
+        );
+
+        showToast(
+            "Download failed: " +
+            (
+                error.message ||
+                "Unknown error"
+            )
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   MODAL
+========================================================= */
+
+const modal =
+    document.getElementById("modal");
+
+const closeModal =
+    document.getElementById("closeModal");
+
+
+function closeModalWindow() {
+
+    const video =
+        modal.querySelector(
+            ".video-player"
+        );
+
+    if (video) {
+
+        video.pause();
+
+        video.removeAttribute("src");
+
+        video.load();
+
+    }
+
+    modalBody.innerHTML = "";
+
+    modal.classList.add("hidden");
+
+}
+
+
+closeModal.addEventListener(
+    "click",
+    closeModalWindow
+);
+
+
+modal.addEventListener(
+    "click",
+    event => {
+
+        if (
+            event.target === modal
+        ) {
+
+            closeModalWindow();
+
+        }
+
+    }
+);
+
+
+document.addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            event.key === "Escape" &&
+            !modal.classList.contains("hidden")
+        ) {
+
+            closeModalWindow();
+
+        }
+
+    }
+);
+
+
+/* =========================================================
    UPLOAD
-========================= */
+========================================================= */
 
 const uploadBtn =
     document.getElementById("uploadBtn");
@@ -406,13 +921,11 @@ fileInput.addEventListener(
         const files =
             [...event.target.files];
 
-
         for (const file of files) {
 
             await uploadFile(file);
 
         }
-
 
         fileInput.value = "";
 
@@ -422,6 +935,10 @@ fileInput.addEventListener(
 );
 
 
+/* =========================================================
+   UPLOAD FILE
+========================================================= */
+
 async function uploadFile(file) {
 
     const {
@@ -430,26 +947,24 @@ async function uploadFile(file) {
         }
     } = await supabaseClient.auth.getUser();
 
-
     if (!user) {
 
         showLogin();
 
         return;
-
     }
-
 
     const path =
         `${user.id}/${crypto.randomUUID()}-${file.name}`;
-
 
     const {
         error: uploadError
     } = await supabaseClient.storage
         .from("files")
-        .upload(path, file);
-
+        .upload(
+            path,
+            file
+        );
 
     if (uploadError) {
 
@@ -464,7 +979,6 @@ async function uploadFile(file) {
         );
 
         return;
-
     }
 
 
@@ -501,7 +1015,6 @@ async function uploadFile(file) {
         );
 
         return;
-
     }
 
 
@@ -513,23 +1026,66 @@ async function uploadFile(file) {
 }
 
 
-/* =========================
-   UI
-========================= */
+/* =========================================================
+   DRAG AND DROP
+========================================================= */
 
-document
-    .getElementById("themeBtn")
-    .addEventListener(
-        "click",
-        () => {
+const dropzone =
+    document.getElementById("dropzone");
 
-            document.body.classList.toggle(
-                "dark"
-            );
+
+if (dropzone) {
+
+    dropzone.addEventListener(
+        "dragover",
+        event => {
+
+            event.preventDefault();
+
+            dropzone.classList.add("drag");
 
         }
     );
 
+
+    dropzone.addEventListener(
+        "dragleave",
+        () => {
+
+            dropzone.classList.remove("drag");
+
+        }
+    );
+
+
+    dropzone.addEventListener(
+        "drop",
+        async event => {
+
+            event.preventDefault();
+
+            dropzone.classList.remove("drag");
+
+            const files =
+                [...event.dataTransfer.files];
+
+            for (const file of files) {
+
+                await uploadFile(file);
+
+            }
+
+            await loadFiles();
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   SEARCH
+========================================================= */
 
 document
     .getElementById("search")
@@ -550,7 +1106,10 @@ document
                 .from("files")
                 .select("*")
                 .eq("trashed", false)
-                .ilike("name", `%${search}%`)
+                .ilike(
+                    "name",
+                    `%${search}%`
+                )
                 .order("name");
 
 
@@ -569,8 +1128,134 @@ document
     );
 
 
-/* =========================
+/* =========================================================
+   THEME
+========================================================= */
+
+document
+    .getElementById("themeBtn")
+    .addEventListener(
+        "click",
+        () => {
+
+            document.body.classList.toggle(
+                "dark"
+            );
+
+        }
+    );
+
+
+/* =========================================================
+   TOAST
+========================================================= */
+
+function showToast(message) {
+
+    const toast =
+        document.getElementById("toast");
+
+    if (!toast) {
+        return;
+    }
+
+    toast.textContent =
+        message;
+
+    toast.classList.add("show");
+
+    clearTimeout(
+        showToast.timeout
+    );
+
+    showToast.timeout =
+        setTimeout(
+            () => {
+
+                toast.classList.remove(
+                    "show"
+                );
+
+            },
+            2500
+        );
+
+}
+
+
+/* =========================================================
+   UTILITIES
+========================================================= */
+
+function escapeHtml(value) {
+
+    return String(value)
+
+        .replaceAll(
+            "&",
+            "&amp;"
+        )
+
+        .replaceAll(
+            "<",
+            "&lt;"
+        )
+
+        .replaceAll(
+            ">",
+            "&gt;"
+        )
+
+        .replaceAll(
+            '"',
+            "&quot;"
+        )
+
+        .replaceAll(
+            "'",
+            "&#039;"
+        );
+
+}
+
+
+function formatSize(bytes) {
+
+    if (!bytes) {
+        return "0 B";
+    }
+
+    const units = [
+        "B",
+        "KB",
+        "MB",
+        "GB",
+        "TB"
+    ];
+
+    const index =
+        Math.floor(
+            Math.log(bytes) /
+            Math.log(1024)
+        );
+
+    return (
+        bytes /
+        Math.pow(
+            1024,
+            index
+        )
+    ).toFixed(
+        index ? 1 : 0
+    )
+    + " "
+    + units[index];
+
+}
+
+
+/* =========================================================
    START
-========================= */
+========================================================= */
 
 checkLogin();
