@@ -1,4 +1,5 @@
-alert("FriendDrive JavaScript is working!");
+console.log("FriendDrive JavaScript is working!");
+console.log("Supabase:", supabaseClient);
 
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
