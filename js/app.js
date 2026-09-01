@@ -1,3 +1,6 @@
+console.log("FriendDrive starting...");
+console.log("Supabase:", supabaseClient);
+
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const KEY="frienddrive-local-v1";
 let state=JSON.parse(localStorage.getItem(KEY)||'null')||{files:[],view:"drive",folder:null,theme:"light"};
